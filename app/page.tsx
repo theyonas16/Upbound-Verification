@@ -6,10 +6,13 @@ import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { Lock } from 'lucide-react';
 import Link from 'next/link';
+import { useFlow } from '@/lib/flow';
 
 export default function LoginPage() {
+  const { update } = useFlow();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [channel, setChannel] = useState<'ecomm' | 'instore'>('ecomm');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -32,7 +35,8 @@ export default function LoginPage() {
       return;
     }
     
-    // Proceed to identity verification
+    // Record application channel (device signals are eComm-only) and proceed.
+    update({ channel });
     window.location.href = '/verify';
   };
 
@@ -63,6 +67,29 @@ export default function LoginPage() {
               <Lock className="w-3 h-3 text-rac-yellow" />
               Secure Form
             </span>
+          </div>
+
+          {/* Application channel — device signals are online-only */}
+          <div className="mb-6">
+            <div className="grid grid-cols-2 gap-2 rounded-rac bg-rac-gray-light p-1">
+              <button
+                type="button"
+                onClick={() => setChannel('ecomm')}
+                className={`rounded-rac py-2 text-sm font-semibold transition-colors ${channel === 'ecomm' ? 'bg-rac-blue text-white' : 'text-rac-text-secondary'}`}
+              >
+                Online
+              </button>
+              <button
+                type="button"
+                onClick={() => setChannel('instore')}
+                className={`rounded-rac py-2 text-sm font-semibold transition-colors ${channel === 'instore' ? 'bg-rac-blue text-white' : 'text-rac-text-secondary'}`}
+              >
+                In-store (RACPad)
+              </button>
+            </div>
+            <p className="mt-1.5 text-center text-xs text-rac-text-secondary">
+              Device signals apply to online applications only.
+            </p>
           </div>
 
           {/* Login Form */}

@@ -10,7 +10,7 @@ import { verifyWithDeviceFaceId, platformAuthAvailable } from '@/lib/webauthn';
 
 type Step = 'prompt' | 'authenticating' | 'complete';
 
-export default function AppleWalletVerifyPage() {
+export default function GoogleWalletVerifyPage() {
   const router = useRouter();
   const { update } = useFlow();
   const [step, setStep] = useState<Step>('prompt');
@@ -19,14 +19,13 @@ export default function AppleWalletVerifyPage() {
 
   useEffect(() => {
     if (step === 'complete') {
-      const verificationTime = ((Date.now() - startTime) / 1000).toFixed(1);
+      const t = ((Date.now() - startTime) / 1000).toFixed(1);
       update({
         identityMethod: 'device',
-        identitySource: 'apple_wallet',
+        identitySource: 'google_wallet',
         identityVerified: true,
-        identityTime: verificationTime,
+        identityTime: t,
       });
-      // SSN is not in the wallet — always route to details for manual entry.
       setTimeout(() => router.push('/verify/details'), 1200);
     }
   }, [step, router, startTime, update]);
@@ -38,13 +37,11 @@ export default function AppleWalletVerifyPage() {
       await verifyWithDeviceFaceId();
       setStep('complete');
     } catch (e) {
-      // Fall back to a simulated pass if the platform can't run WebAuthn
-      // (e.g. desktop browser), so the demo continues.
       if (!platformAuthAvailable()) {
         await new Promise((r) => setTimeout(r, 1200));
         setStep('complete');
       } else {
-        setError((e as Error).message || 'Face ID failed. Try a different method.');
+        setError((e as Error).message || 'Biometric failed. Try a different method.');
         setStep('prompt');
       }
     }
@@ -58,33 +55,24 @@ export default function AppleWalletVerifyPage() {
           {step === 'prompt' && (
             <div className="space-y-8">
               <div className="text-center">
-                <h1 className="text-heading font-bold text-rac-blue mb-2">Verify with Apple Wallet</h1>
+                <h1 className="text-heading font-bold text-rac-blue mb-2">Verify with Google Wallet</h1>
                 <p className="text-subheading text-rac-text-secondary">
-                  Use your ID in Apple Wallet, then add your SSN — it isn’t stored in your wallet.
+                  Use your ID in Google Wallet, then add your SSN — it isn’t stored in your wallet.
                 </p>
               </div>
 
-              <div className="bg-gradient-to-br from-gray-900 to-gray-700 rounded-2xl p-6 text-white shadow-xl">
+              <div className="bg-gradient-to-br from-blue-900 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
                 <div className="flex items-start justify-between mb-8">
                   <div>
-                    <div className="text-xs opacity-70 mb-1">Driver&apos;s License</div>
+                    <div className="text-xs opacity-70 mb-1">State ID</div>
                     <div className="text-sm font-semibold">Texas</div>
                   </div>
                   <div className="bg-white/20 rounded-lg p-2 backdrop-blur-sm">
-                    <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
                     <Smartphone className="w-8 h-8" />
                   </div>
-                  <div>
-                    <div className="text-xs opacity-70">Ready to verify</div>
-                    <div className="font-semibold">Tap to continue</div>
-                  </div>
                 </div>
+                <div className="text-xs opacity-70">Ready to verify</div>
+                <div className="font-semibold">Tap to continue</div>
               </div>
 
               <div className="space-y-4">
@@ -95,7 +83,7 @@ export default function AppleWalletVerifyPage() {
                   <div>
                     <h3 className="font-semibold text-rac-blue">Verify in seconds</h3>
                     <p className="text-sm text-rac-text-secondary">
-                      Face ID confirms your identity — no document upload. You&apos;ll still enter your SSN next.
+                      Biometrics confirm your identity — no document upload. You&apos;ll still enter your SSN next.
                     </p>
                   </div>
                 </div>
@@ -116,54 +104,38 @@ export default function AppleWalletVerifyPage() {
 
               <div className="space-y-3">
                 <Button variant="primary" fullWidth onClick={handleVerify} className="h-14 text-base">
-                  Continue with Apple Wallet
+                  Continue with Google Wallet
                 </Button>
                 <Button variant="ghost" fullWidth onClick={() => router.push('/verify/document')} className="text-sm">
                   Use a different method
                 </Button>
               </div>
-              <p className="text-xs text-center text-rac-text-secondary">
-                You&apos;ll authenticate with Face ID or Touch ID.
-              </p>
             </div>
           )}
 
           {step === 'authenticating' && (
-            <div className="space-y-8 text-center">
-              <div className="flex flex-col items-center gap-6 py-12">
+            <div className="space-y-8 text-center py-12">
+              <div className="flex flex-col items-center gap-6">
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-32 h-32 rounded-full border-4 border-rac-blue animate-ping opacity-20" />
                   </div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-24 h-24 rounded-full border-4 border-rac-blue animate-pulse opacity-40" />
-                  </div>
                   <div className="relative w-20 h-20 bg-rac-blue rounded-full flex items-center justify-center">
-                    <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
+                    <Shield className="w-10 h-10 text-white" />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <h2 className="text-xl font-bold text-rac-blue">Authenticating with Face ID</h2>
-                  <p className="text-sm text-rac-text-secondary">Look at your device to verify</p>
-                </div>
+                <h2 className="text-xl font-bold text-rac-blue">Authenticating…</h2>
               </div>
             </div>
           )}
 
           {step === 'complete' && (
-            <div className="space-y-8 text-center">
-              <div className="flex flex-col items-center gap-6 py-12">
-                <div className="relative">
-                  <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center">
-                    <svg className="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-32 h-32 rounded-full border-4 border-green-500 animate-ping opacity-30" />
-                  </div>
+            <div className="space-y-8 text-center py-12">
+              <div className="flex flex-col items-center gap-6">
+                <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center">
+                  <svg className="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
                 </div>
                 <div className="space-y-2">
                   <h2 className="text-xl font-bold text-rac-blue">Identity confirmed</h2>
