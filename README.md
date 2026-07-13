@@ -1,52 +1,113 @@
 # RAC Identity Verification PoC
 
-Device-native identity verification prototype built with Next.js 15, matching RAC's design system.
+Device-native identity verification prototype aligned with RAC's Decision
+Engine (DE). Built on Next.js 16 with the RAC design system.
 
-## 🎯 What This Demonstrates
+## Flow
 
-**The North Star Vision:** Zero-vendor-lock-in, device-native identity verification that costs $0 per verification (vs. $1+ with Persona/ID.me).
-
-### Complete User Flow
+The DE decides **first**, then the approval level determines which documents
+are collected. SSN is entered manually in **every** path — it is never read
+from an ID or wallet.
 
 ```
-1. Login (email/password) → /
-2. Device Detection → /verify
-3. Apple Wallet Verification (simulated) → /verify/apple-wallet
-4. Success Screen (verified claims) → /verify/success
-5. Application Ready → /application
+identity            device Face ID (WebAuthn) · Apple/Google Wallet · or scan ID (OCR + face match)
+   ↓
+details             SSN + phone (email optional)          ← DE hard dependencies
+   ↓
+DE decision         simulated Decision Engine → Level 0-3
+   ↓
+level-scoped docs   L0/L1: residence · L2: + income · L3: + references   (Plaid)
+   ↓
+success             approval level, required-vs-skipped steps, split cost
 ```
 
-### Key Features Built
+## Approval levels
 
-✅ **RAC Design System**
-- Exact color matching (#0057A0 blue, #FFD200 yellow, #E31837 red)
-- Component library (Button, Input, Header)
-- Mobile-first responsive layout
+The DE returns a level; the level sets the required post-approval documents.
 
-✅ **Device-Native Verification Flow**
-- Device capability detection (iOS 15.1+, Android 11+)
-- Simulated Apple Wallet authentication
-- Face ID/Touch ID animation
-- 2-5 second verification time
+| Level | Allows | Required documents |
+| --- | --- | --- |
+| **L0** | Any single item — phone included | ID + Residence |
+| **L1** | Any single item (no phone) | ID + Residence |
+| **L2** | Higher-value items — income verified | ID + Residence + **Income** |
+| **L3** | Premium / multi-item | ID + Residence + Income + **References** |
+| **L4** | (same doc set as L3) | ID + Residence + Income + References |
+| **L5** | (same doc set as L3) | ID + Residence + Income + References |
 
-✅ **Success Screen with Verified Claims**
-- OIDC4IDA-compliant data structure
-- Mock fraud signals (device trust, biometric confidence)
-- Cost comparison ($0 device vs. $1 vendor)
+Every path also requires **identity + SSN/contact** before the DE runs. The
+demo assigns L0-L3 with a weighted random split (20% L0, 30% L1, 30% L2,
+20% L3).
 
-## 🚀 Running the Demo
+## Tech stack
 
-### Prerequisites
-- Node.js 18+ installed
+- **Next.js 16.2.6** (App Router, Turbopack) · **React 19** · **TypeScript**
+- **Tailwind CSS** with RAC design tokens (`#0057A0` blue, `#FFD200` yellow, `#E31837` red)
+- **WebAuthn** — real device Face ID / platform-authenticator ceremony
+- **Tesseract.js** — on-device ID OCR (SSN is never parsed from the ID)
+- **face-api.js** — ID-photo ↔ selfie match (loaded from CDN at runtime)
+- **Plaid** (`react-plaid-link`) — residence + income; real sandbox with keys, simulated without
 
-### Setup & Run
+## Routes (19)
+
+**Pages (14)**
+
+| Route | Purpose |
+| --- | --- |
+| `/` | Login + application channel (online / in-store RACPad) |
+| `/verify` | Device capability detection → routes to a method |
+| `/verify/apple-wallet` | Apple Wallet + Face ID (WebAuthn) |
+| `/verify/google-wallet` | Google Wallet + biometric |
+| `/verify/document` | Scan ID (Tesseract OCR + face-api match) |
+| `/verify/details` | SSN + phone + email (DE hard dependencies) |
+| `/verify/decision` | Animated DE decision → approval level |
+| `/verify/residence` | Residence via Plaid |
+| `/verify/income` | Income via Plaid (L2+) |
+| `/verify/references` | Personal references (L3) |
+| `/verify/success` | Level table, required-vs-skipped, split cost |
+| `/application` | Post-verification hand-off |
+| `/pilot-design` | Shadow-mode pilot brief (stakeholders) |
+| `/dashboard` | Funnel analytics segmented by level |
+
+**API (5)**
+
+| Route | Purpose |
+| --- | --- |
+| `POST /api/decision` | Simulated Decision Engine (weighted level) |
+| `POST /api/plaid/link-token` | Plaid Link token (real or sandbox) |
+| `POST /api/plaid/exchange` | Exchange for residence / income |
+| `POST /api/webauthn/challenge` | WebAuthn challenge |
+| `POST /api/webauthn/verify` | WebAuthn attestation check |
+
+## Shadow-mode pilot
+
+`/pilot-design` is a static stakeholder page explaining the rollout: OpenKYC
+runs in **shadow mode** beside the current stack, both verify every applicant,
+and nothing customer-facing changes until OpenKYC matches or beats the current
+pass/fail baseline — with the accuracy threshold defined by the DE team. It
+includes the parallel-run diagram and placeholder metrics (agreement rate,
+false reject/accept, avg confidence — all "measured during pilot").
+
+## Running the demo
 
 ```bash
-cd /home/claude/rac-identity-poc
-npm run dev
+npm install
+npm run dev        # http://localhost:3000
+npm run build      # production build (Vercel-ready)
 ```
 
-Open http://localhost:3000
+**Login:** any valid email + any password. Pick **Online** or **In-store
+(RACPad)** — device signals are shown for online applications only.
+
+### iPhone Safari (primary demo target)
+
+- Open the deployed URL in **Safari on iOS**.
+- **Face ID** fires on the Apple Wallet path via the real WebAuthn ceremony
+  (requires HTTPS — works on the Vercel domain, not plain `http://localhost`).
+- The **Scan ID** path uses the camera: "Take photo of ID" and "Take selfie"
+  open the rear/front camera (`capture` attribute), then run OCR + face match
+  on-device.
+- On desktop browsers without a platform authenticator, the Face ID step
+  degrades gracefully to a simulated pass so the flow still completes.
 
 ## 🔐 Environment Variables (Vercel)
 
@@ -78,80 +139,20 @@ the box:
 > OCR (Tesseract.js) and face matching (face-api.js) run fully client-side and
 > need no keys.
 
-### Demo Credentials
-- **Email:** Any email format (e.g., test@upbound.com)
-- **Password:** Any password (minimum 1 character)
-
-## 📱 Testing Device Detection
-
-The flow routes based on your actual device:
-
-- **iOS Safari (15.1+):** → Apple Wallet flow
-- **Android Chrome (11+):** → Google Wallet flow  
-- **Desktop/Other:** → Document upload flow (not built yet)
-
-To test Apple Wallet flow on desktop:
-- Use Chrome DevTools Device Emulation
-- Set User-Agent to iPhone
-- Or view on actual iOS device
-
-## 🏗️ Architecture
+## Project structure
 
 ```
-/app
-  /page.tsx                    # Login screen
-  /verify
-    /page.tsx                  # Device detection
-    /apple-wallet/page.tsx     # Apple Wallet flow
-    /success/page.tsx          # Verified claims display
-  /application/page.tsx        # Post-verification endpoint
-
-/components
-  /RACHeader.tsx              # Blue header with Contact Us
-  /RACLogo.tsx                # SVG logo component
-  /Button.tsx                 # Primary/Secondary/Ghost variants
-  /Input.tsx                  # With error states, password toggle
-
-/lib
-  /utils.ts                   # className merging utility
-
-tailwind.config.ts            # RAC design tokens
+app/
+  page.tsx                 login + channel
+  verify/                  identity methods + details, decision, post-DE steps, success
+  pilot-design/            shadow-mode brief
+  dashboard/               level-segmented funnel
+  api/                     decision, plaid/*, webauthn/*
+components/                Button, Input, RACHeader, RACLogo, Stepper, PlaidConnect, PostStepLayout
+lib/                       flow (state), levels, cost, webauthn, ocr, faceMatch, analytics
 ```
-
-## 📊 Next Steps (Phase 2 - Tomorrow)
-
-### Fallback Flow (OpenKYC)
-- [ ] Document upload screen
-- [ ] Selfie capture with liveness
-- [ ] Manual review state
-
-### Analytics Dashboard
-- [ ] Device adoption metrics
-- [ ] Cost projection calculator
-- [ ] Verification timing charts
-- [ ] SQLite database for real data
-
-### OIDC4IDA Tokens
-- [ ] JWT generation with verified_claims
-- [ ] HSM key signing (simulated)
-- [ ] Token validation endpoint
-
-## 💡 What This Proves
-
-1. **Device-native UX is dramatically faster** — 2s vs. 60s+ document upload
-2. **RAC design system can adapt** — New flow feels native to existing experience
-3. **Cost savings are real** — $0 device verification vs. $1+ vendor fees
-4. **Technical feasibility** — APIs exist, integration is straightforward
-
-## 📈 Business Impact
-
-**If 35% of users have device credentials by Year 2:**
-- 350K verifications at $0 = $0
-- 650K verifications at $0.05 (OpenKYC) = $32.5K
-- **Total: $32.5K vs. $250K (Persona) = $217.5K annual savings**
 
 ---
 
-**Built with:** Next.js 15, TypeScript, Tailwind CSS, Lucide Icons
-**Build time:** ~90 minutes with Claude Code
-**Status:** Phase 1 Complete ✅
+**Status:** Decision Engine-aligned build. Simulated DE + Plaid + WebAuthn have
+real integration seams; add credentials to go live.
