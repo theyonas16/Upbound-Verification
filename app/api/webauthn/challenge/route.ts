@@ -12,7 +12,12 @@ export async function POST() {
   const userId = b64url(randomBytes(16));
   return Response.json({
     challenge,
-    rp: { name: 'RAC Verify', id: process.env.WEBAUTHN_RP_ID || undefined },
+    rp: {
+      name: 'RAC Verify',
+      // RP ID must match the deployment domain in production (e.g. the Vercel
+      // domain). If unset, the browser defaults it to the current origin.
+      id: process.env.NEXT_PUBLIC_WEBAUTHN_RP_ID || process.env.WEBAUTHN_RP_ID || undefined,
+    },
     user: {
       id: userId,
       name: `applicant-${userId.slice(0, 6)}`,

@@ -48,6 +48,36 @@ npm run dev
 
 Open http://localhost:3000
 
+## 🔐 Environment Variables (Vercel)
+
+Set these in **Vercel → Project → Settings → Environment Variables** (and in a
+local `.env.local` for development). **Do not commit real keys** — none are
+hardcoded in this repo.
+
+| Variable | Example | Purpose |
+| --- | --- | --- |
+| `PLAID_CLIENT_ID` | *(your Plaid client ID)* | Plaid API client identifier (server-side) |
+| `PLAID_SECRET` | *(your Plaid secret)* | Plaid API secret (server-side) |
+| `PLAID_ENV` | `sandbox` | Plaid environment: `sandbox`, `development`, or `production` |
+| `NEXT_PUBLIC_WEBAUTHN_RP_ID` | `rac-poc-completetar1.vercel.app` | WebAuthn Relying Party ID — set to your Vercel domain (hostname only, no `https://` or path) |
+
+### Fallback / simulated mode
+
+The app is designed to run **without** these variables so the demo works out of
+the box:
+
+- **Plaid** — if `PLAID_CLIENT_ID` / `PLAID_SECRET` are absent, the residence
+  and income steps use a **simulated** bank connection (labelled "Sandbox
+  connection" in the UI). When both are set, `/api/plaid/link-token` creates a
+  real Plaid Link token against `PLAID_ENV`.
+- **WebAuthn** — if `NEXT_PUBLIC_WEBAUTHN_RP_ID` is unset, the browser defaults
+  the Relying Party ID to the current origin. Set it explicitly to your Vercel
+  domain in production so the Face ID ceremony is bound to the right host.
+
+> Plaid credentials and the WebAuthn RP ID are the only external configuration.
+> OCR (Tesseract.js) and face matching (face-api.js) run fully client-side and
+> need no keys.
+
 ### Demo Credentials
 - **Email:** Any email format (e.g., test@upbound.com)
 - **Password:** Any password (minimum 1 character)
