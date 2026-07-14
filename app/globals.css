@@ -1,6 +1,9 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Load the RAC design tokens (colors, fontSize, rounded-rac, h-rac-input, …)
+   defined in the legacy-style config. Tailwind v4 does not auto-read
+   tailwind.config.ts, so link it explicitly. */
+@config "../tailwind.config.ts";
 
 @layer utilities {
   .animate-fade-in {
