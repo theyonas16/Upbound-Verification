@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { RACHeader } from '@/components/RACHeader';
-import { Button } from '@/components/Button';
+import { CameraCapture } from '@/components/CameraCapture';
 import { Loader2, IdCard, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useFlow } from '@/lib/flow';
@@ -20,28 +20,16 @@ export default function DocumentVerifyPage() {
   const [error, setError] = useState<string | null>(null);
   const startTime = useRef(Date.now());
 
-  const readFile = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result as string);
-      r.onerror = reject;
-      r.readAsDataURL(file);
-    });
-
-  async function onIdSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIdPhoto(await readFile(file));
+  function onIdCaptured(dataUrl: string) {
+    setIdPhoto(dataUrl);
     setStep('selfie');
   }
 
-  async function onSelfieSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !idPhoto) return;
+  async function onSelfieCaptured(selfie: string) {
+    if (!idPhoto) return;
     setError(null);
     setStep('processing');
     try {
-      const selfie = await readFile(file);
       setStatus('Reading your ID…');
       const ocr = await readIdDocument(idPhoto, (p) => setStatus(`Reading your ID… ${Math.round(p * 100)}%`));
       setStatus('Matching your face to your ID…');
@@ -89,13 +77,12 @@ export default function DocumentVerifyPage() {
                   <div className="text-xs text-rac-text-secondary">Front of your driver&apos;s license or state ID</div>
                 </div>
               </div>
-              <label className="block">
-                <span className="sr-only">Take photo of ID</span>
-                <input type="file" accept="image/*" capture="environment" onChange={onIdSelected} className="hidden" />
-                <span className="flex h-12 w-full cursor-pointer items-center justify-center rounded-rac bg-rac-blue font-semibold text-rac-yellow">
-                  Take photo of ID
-                </span>
-              </label>
+              <CameraCapture
+                facingMode="environment"
+                onCapture={onIdCaptured}
+                startLabel="Open camera for ID"
+                captureLabel="Capture ID"
+              />
             </div>
           )}
 
@@ -108,16 +95,19 @@ export default function DocumentVerifyPage() {
                   <div className="text-xs text-rac-text-secondary">We&apos;ll match it to the photo on your ID</div>
                 </div>
               </div>
-              <label className="block">
-                <span className="sr-only">Take selfie</span>
-                <input type="file" accept="image/*" capture="user" onChange={onSelfieSelected} className="hidden" />
-                <span className="flex h-12 w-full cursor-pointer items-center justify-center rounded-rac bg-rac-blue font-semibold text-rac-yellow">
-                  Take selfie
-                </span>
-              </label>
-              <Button variant="ghost" fullWidth onClick={() => setStep('id')} className="text-sm">
+              <CameraCapture
+                facingMode="user"
+                onCapture={onSelfieCaptured}
+                startLabel="Open camera for selfie"
+                captureLabel="Take selfie"
+              />
+              <button
+                type="button"
+                onClick={() => setStep('id')}
+                className="w-full text-center text-xs text-rac-blue hover:underline"
+              >
                 Retake ID
-              </Button>
+              </button>
             </div>
           )}
 
@@ -135,7 +125,7 @@ export default function DocumentVerifyPage() {
             <p className="text-xs text-rac-text-secondary">
               <span className="font-semibold text-rac-blue">[Real OCR + face match]</span> Text is read with
               Tesseract.js and the selfie is matched with face-api.js, both on-device. Your SSN is never read from
-              the ID.
+              the ID. Camera access requires HTTPS (works on the deployed site).
             </p>
           </div>
         </div>
