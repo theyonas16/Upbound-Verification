@@ -1,7 +1,7 @@
 # RAC Identity Verification PoC
 
 Device-native identity verification prototype aligned with RAC's Decision
-Engine (DE). Built on Next.js 16 with the RAC design system.
+Engine (DE). Built on Next.js 14.2.35 with the RAC design system.
 
 ## Flow
 
@@ -40,16 +40,16 @@ demo assigns L0-L3 with a weighted random split (20% L0, 30% L1, 30% L2,
 
 ## Tech stack
 
-- **Next.js 16.2.6** (App Router, Turbopack) · **React 19** · **TypeScript**
+- **Next.js 14.2.35** (App Router) · **React 19** · **TypeScript**
 - **Tailwind CSS** with RAC design tokens (`#0057A0` blue, `#FFD200` yellow, `#E31837` red)
 - **WebAuthn** — real device Face ID / platform-authenticator ceremony
 - **Tesseract.js** — on-device ID OCR (SSN is never parsed from the ID)
 - **face-api.js** — ID-photo ↔ selfie match (loaded from CDN at runtime)
 - **Plaid** (`react-plaid-link`) — residence + income; real sandbox with keys, simulated without
 
-## Routes (19)
+## Routes (18)
 
-**Pages (14)**
+**Pages**
 
 | Route | Purpose |
 | --- | --- |
@@ -68,7 +68,7 @@ demo assigns L0-L3 with a weighted random split (20% L0, 30% L1, 30% L2,
 | `/pilot-design` | Shadow-mode pilot brief (stakeholders) |
 | `/dashboard` | Funnel analytics segmented by level |
 
-**API (5)**
+**API**
 
 | Route | Purpose |
 | --- | --- |
